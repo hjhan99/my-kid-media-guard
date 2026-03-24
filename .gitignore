@@ -1,0 +1,16 @@
+# Virtual Environments
+.env
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# Streamlit Local Secrets (배포 시 개인정보 유출 방지)
+.streamlit/secrets.toml
