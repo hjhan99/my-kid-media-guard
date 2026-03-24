@@ -205,9 +205,20 @@ def extract_media(url):
     video_path = os.path.join(temp_dir, 'video.mp4')
     
     # yt-dlp 옵션: 403 Forbidden 방지를 위해 클라이언트 속이기
-    common_args = {'youtube': {'player_client': ['android', 'web']}}
+    common_args = {'youtube': {'player_client': ['ios', 'tv', 'web']}}
     
-    # 1. 오디오 다운로드 및 메타데이터 추출
+    title, description = "제목 없음", "설명 없음"
+    # 메타데이터를 다운로드 에러 전에 1차적으로 강제 추출 시도
+    try:
+        with yt_dlp.YoutubeDL({'quiet': True, 'no_warnings': True}) as ydl:
+            info = ydl.extract_info(url, download=False)
+            if info:
+                title = info.get('title', '제목 없음')
+                description = info.get('description', '')
+    except:
+        pass
+
+    # 1. 오디오 다운로드
     opts_audio = {
         'format': 'm4a/bestaudio/best',
         'outtmpl': audio_path,
@@ -216,16 +227,14 @@ def extract_media(url):
         'no_warnings': True,
     }
     
-    title, description = "제목 없음", "설명 없음"
     err_msg = None
     try:
         with yt_dlp.YoutubeDL(opts_audio) as ydl:
-            info = ydl.extract_info(url, download=True)
-            title = info.get('title', '제목 없음')
-            description = info.get('description', '')
+            ydl.download([url])
     except Exception as e:
         err_msg = f"미디어 다운로드 오류: {e}"
-        return None, None, None, [], temp_dir, err_msg
+        # 에러가 나더라도 사전에 뽑은 제목(title)은 반드시 반환하여 평가에 개입
+        return title, description, None, [], temp_dir, err_msg
         
     # 2. 비디오 프레임 추출을 위한 저화질 영상 다운로드
     opts_video = {
@@ -289,12 +298,19 @@ if st.button("🚀 검열 시작", type="primary", use_container_width=True):
                     title, desc, audio_path, frames, temp_dir, err = extract_media(youtube_url)
                     
                     if err:
-                        st.warning(f"⚠️ 영상 다운로드 서버 차단(403) 발생. '자막 기반 분석 모드'로 자동 전환합니다. ({err})")
+                        st.warning(f"⚠️ 영상 다운로드 서버 차단(403) 발생. 미디어 스캔이 제한되며 '자막 대본' 분석으로 대체합니다. ({err})")
                         audio_path = None
                         frames = []
                     else:
                         st.write(f"✅ 미디어 추출 완료! (제목: {title})")
                     
+                    # 치명적 데이터 고갈 방어 로직 (영상/음성 없고 자막도 없는 초유의 사태)
+                    blind_mode = False
+                    if not transcript_text and not audio_path:
+                        blind_mode = True
+                        st.error("🚨 전면 데이터 차단! (유튜브 403)")
+                        st.warning("유튜브 서버가 자막 추출과 오디오 다운로드를 완벽히 가로막았습니다. AI가 영상의 고유 내용을 **전혀 들을 수 없으므로 오로지 유튜버가 적은 '제목과 설명글' 만으로 평가(Blind Test)**합니다. 결과가 매우 부정확할 수 있습니다!")
+
                     if frames:
                         st.write("📸 캡처된 프레임 이미지들:")
                         st.image(frames, width=100)
@@ -312,6 +328,8 @@ if st.button("🚀 검열 시작", type="primary", use_container_width=True):
                     prompt = f"""
 당신은 기독교 가치관을 지키는 세상에서 가장 엄격하고 정밀한 앱 'MyKidMediaGuard'의 핵심 AI 엔진입니다.
 판정 프로세스는 반드시 다음 두 단계로 철저히 분리하여 수행하십시오.
+
+{"🚨 [블라인드 긴급 모드 발동] 현재 이 영상은 유튜브 정책에 의해 오디오 파일과 영상 대본(자막)이 완전히 삭제되어 '제목'과 '설명글' 텍스트밖에는 남지 않았습니다! 절대로 본편 내용이 무해하다고 착각하지 마시고, 요약문 3번 줄에 '본편 데이터 검열불가(제목으로만 제한적 판별)'라는 경고를 반드시 삽입하십시오! 분석 가능한 정보가 부족하다면 rating을 '안전'으로 주지 말고 단어 하나라도 의심되면 즉시 '주의' 혹은 '차단'으로 판단하십시오!" if blind_mode else ""}
 
 [단계 1: 전수 조사 (객관적 사실 탐지 - Detection First)]
 사용자가 선택한 타겟 연령대와 무관하게, 영상 내에 존재하는 모든 비속어, 은어, 욕설, 조롱, 시각/청각적 유해 요소를 1초 단위로 완전히 전수 조사하십시오.
