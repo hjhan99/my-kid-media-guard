@@ -289,11 +289,11 @@ if st.button("🚀 검열 시작", type="primary", use_container_width=True):
                     title, desc, audio_path, frames, temp_dir, err = extract_media(youtube_url)
                     
                     if err:
-                        st.error(err)
-                        status.update(label="❌ 미디어 다운로드 실패", state="error")
-                        st.stop()
-                    
-                    st.write(f"✅ 미디어 추출 완료! (제목: {title})")
+                        st.warning(f"⚠️ 영상 다운로드 서버 차단(403) 발생. '자막 기반 분석 모드'로 자동 전환합니다. ({err})")
+                        audio_path = None
+                        frames = []
+                    else:
+                        st.write(f"✅ 미디어 추출 완료! (제목: {title})")
                     
                     if frames:
                         st.write("📸 캡처된 프레임 이미지들:")
@@ -303,8 +303,11 @@ if st.button("🚀 검열 시작", type="primary", use_container_width=True):
                     
                     # 새로운 genai.Client 생성 및 파일 업로드
                     client = genai.Client(api_key=api_key)
-                    uploaded_file = client.files.upload(file=audio_path)
-                    st.write("🎧 오디오 트랙을 AI에게 전송했습니다.")
+                    if not err and audio_path and os.path.exists(audio_path):
+                        uploaded_file = client.files.upload(file=audio_path)
+                        st.write("🎧 오디오 트랙을 AI에게 전송했습니다.")
+                    else:
+                        st.write("⚠️ 오디오 트랙 없이 자막 데이터 텍스트만으로 정밀 분석을 실시합니다.")
                     
                     prompt = f"""
 당신은 기독교 가치관을 지키는 세상에서 가장 엄격하고 정밀한 앱 'MyKidMediaGuard'의 핵심 AI 엔진입니다.
@@ -352,7 +355,12 @@ if st.button("🚀 검열 시작", type="primary", use_container_width=True):
 설명: {(desc or "")[:1000]}
 자막: {(transcript_text or "")[:5000]}
 """
-                    content_parts = [uploaded_file, prompt] + frames
+                    content_parts = []
+                    if uploaded_file:
+                        content_parts.append(uploaded_file)
+                    content_parts.append(prompt)
+                    if frames:
+                        content_parts.extend(frames)
                     
                     st.write(f"⏳ 최신 모델(gemini-3-flash-preview) 추론 시작...")
                     
