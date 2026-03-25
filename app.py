@@ -218,22 +218,41 @@ def extract_media(url):
     except:
         pass
 
-    # 1. 오디오 다운로드
-    opts_audio = {
-        'format': 'm4a/bestaudio/best',
-        'outtmpl': audio_path,
-        'extractor_args': common_args,
-        'quiet': True,
-        'no_warnings': True,
-    }
-    
+    # 1. 듀얼 엔진 오디오 다운로드 (100% 무료 우회 아키텍처)
+    audio_success = False
     err_msg = None
+    
+    # [엔진 1] pytubefix 시도 (최신 403 Forbidden 우회 모듈)
     try:
-        with yt_dlp.YoutubeDL(opts_audio) as ydl:
-            ydl.download([url])
-    except Exception as e:
-        err_msg = f"미디어 다운로드 오류: {e}"
-        # 에러가 나더라도 사전에 뽑은 제목(title)은 반드시 반환하여 평가에 개입
+        from pytubefix import YouTube
+        yt = YouTube(url, use_oauth=False, allow_oauth_cache=True)
+        if yt.title: title = yt.title
+        # 가장 가벼운 오디오 트랙 다운로드
+        stream = yt.streams.get_audio_only()
+        if stream:
+            stream.download(output_path=temp_dir, filename='audio.m4a')
+            audio_success = True
+    except Exception as e1:
+        pass
+        
+    # [엔진 2] yt-dlp 시도 (엔진 1 실패 시 실행되는 강력한 폴백)
+    if not audio_success:
+        opts_audio = {
+            'format': 'm4a/bestaudio/best',
+            'outtmpl': audio_path,
+            'extractor_args': common_args,
+            'quiet': True,
+            'no_warnings': True,
+        }
+        try:
+            with yt_dlp.YoutubeDL(opts_audio) as ydl:
+                ydl.download([url])
+                audio_success = True
+        except Exception as e2:
+            err_msg = f"미디어 다운로드 완전 차단됨 (엔진2: {e2})"
+            
+    if not audio_success:
+        # 두 엔진이 모두 터졌을 경우에만 에러 반환
         return title, description, None, [], temp_dir, err_msg
         
     # 2. 비디오 프레임 추출을 위한 저화질 영상 다운로드
