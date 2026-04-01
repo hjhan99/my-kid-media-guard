@@ -441,11 +441,24 @@ if st.button("🚀 검열 시작", type="primary", use_container_width=True):
                         temperature=0.2, # 엄격하고 일관된 판정을 위해 온도 낮춤
                     )
                     
+                    # 🧠 [가변 해상도 두뇌 자동 변속 로직]
+                    # 자막이 아예 없어서 구글의 '귀(청각)' 능력을 극한으로 끌어올려야 하는 경우 최고급 Pro 모델 발동!
+                    smart_model = 'gemini-1.5-flash'
+                    if blind_mode:
+                        smart_model = 'gemini-1.5-flash'
+                    elif not transcript_text and audio_path:
+                        smart_model = 'gemini-1.5-pro'
+                        st.info("🧠 자막 데이터가 존재하지 않아, 최고성능 청취 엔진(Gemini 1.5 Pro)으로 자동 터보 변속합니다!")
+                    
+                    st.write(f"⏳ 채택된 모델({smart_model}) 추론 시작...")
+                    
                     # 로딩 방패 애니메이션 및 감성 메시지
-                    loading_bar = st.progress(30, text="🛡️ 가디언 엔진이 미디어의 가치관을 정밀 스캔 중입니다...")
+                    loading_bar = st.progress(30, text=f"🛡️ 가디언 엔진({smart_model})이 미디어의 가치관을 정밀 스캔 중입니다...")
+                    
+                    status.update(label="🛡️ 가디언 엔진이 미디어의 가치관을 정밀 스캔 중입니다...", state="running")
                     
                     response = client.models.generate_content(
-                        model=model_id,
+                        model=smart_model,
                         contents=content_parts,
                         config=generate_content_config,
                     )
