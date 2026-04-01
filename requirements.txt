@@ -3,6 +3,7 @@ google-genai>=0.5.0
 youtube-transcript-api
 yt-dlp
 pytubefix
+requests
 opencv-python-headless
 pillow
 python-dotenv

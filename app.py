@@ -222,20 +222,47 @@ def extract_media(url):
     audio_success = False
     err_msg = None
     
-    # [엔진 1] pytubefix 시도 (최신 403 Forbidden 우회 모듈)
+    # [새로운 최상위 우회 엔진: 타사 우회 API 연동]
+    import requests
+    rapidapi_key = None
     try:
-        from pytubefix import YouTube
-        yt = YouTube(url, use_oauth=False, allow_oauth_cache=True)
-        if yt.title: title = yt.title
-        # 가장 가벼운 오디오 트랙 다운로드
-        stream = yt.streams.get_audio_only()
-        if stream:
-            stream.download(output_path=temp_dir, filename='audio.m4a')
-            audio_success = True
-    except Exception as e1:
-        pass
+        rapidapi_key = st.secrets.get("RAPIDAPI_KEY")
+    except:
+        rapidapi_key = os.getenv("RAPIDAPI_KEY")
         
-    # [엔진 2] yt-dlp 시도 (엔진 1 실패 시 실행되는 강력한 폴백)
+    if rapidapi_key:
+        try:
+            # RapidAPI (Youtube-mp36) 호출로 서버 IP 차단(가짜 DRM) 전면 우회
+            vid_id = extract_video_id(url)
+            headers = {
+                "x-rapidapi-key": rapidapi_key,
+                "x-rapidapi-host": "youtube-mp36.p.rapidapi.com"
+            }
+            res = requests.get("https://youtube-mp36.p.rapidapi.com/dl", headers=headers, params={"id": vid_id}, timeout=30)
+            if res.status_code == 200:
+                data = res.json()
+                if "link" in data:
+                    dl_res = requests.get(data["link"], timeout=60)
+                    with open(audio_path, 'wb') as f:
+                        f.write(dl_res.content)
+                    audio_success = True
+        except Exception as api_err:
+            err_msg = f"RapidAPI 연결 실패: {api_err}"
+    
+    # [엔진 1] pytubefix 시도 (API 키가 없거나 실패했을 때 작동하는 백업)
+    if not audio_success:
+        try:
+            from pytubefix import YouTube
+            yt = YouTube(url, use_oauth=False, allow_oauth_cache=True)
+            if yt.title: title = yt.title
+            stream = yt.streams.get_audio_only()
+            if stream:
+                stream.download(output_path=temp_dir, filename='audio.m4a')
+                audio_success = True
+        except Exception as e1:
+            pass
+        
+    # [엔진 2] yt-dlp 시도 (최후의 로컬 스크래핑 폴백)
     if not audio_success:
         opts_audio = {
             'format': 'm4a/bestaudio/best',
@@ -249,10 +276,10 @@ def extract_media(url):
                 ydl.download([url])
                 audio_success = True
         except Exception as e2:
-            err_msg = f"미디어 다운로드 완전 차단됨 (엔진2: {e2})"
+            if not err_msg:
+                err_msg = f"미디어 다운로드 완전 차단됨 (가짜 DRM 차단: {e2})"
             
     if not audio_success:
-        # 두 엔진이 모두 터졌을 경우에만 에러 반환
         return title, description, None, [], temp_dir, err_msg
         
     # 2. 비디오 프레임 추출을 위한 저화질 영상 다운로드
