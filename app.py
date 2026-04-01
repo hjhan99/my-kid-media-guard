@@ -241,13 +241,20 @@ def extract_media(url):
             res = requests.get("https://youtube-mp36.p.rapidapi.com/dl", headers=headers, params={"id": vid_id}, timeout=30)
             if res.status_code == 200:
                 data = res.json()
-                if "link" in data:
-                    dl_res = requests.get(data["link"], timeout=60)
+                # 딕셔너리에서 다양한 다운로드 URL 키 시도
+                download_url = data.get("link") or data.get("url") or data.get("download") or data.get("mp3")
+                
+                if download_url:
+                    dl_res = requests.get(download_url, timeout=60)
                     with open(audio_path, 'wb') as f:
                         f.write(dl_res.content)
                     audio_success = True
+                else:
+                    err_msg = f"RapidAPI 응답을 해석할 수 없습니다: {data}"
+            else:
+                err_msg = f"RapidAPI 접속 거부 (상태코드 {res.status_code}): {res.text}"
         except Exception as api_err:
-            err_msg = f"RapidAPI 연결 실패: {api_err}"
+            err_msg = f"RapidAPI 연결 중 치명적 오류: {api_err}"
     
     # [엔진 1] pytubefix 시도 (API 키가 없거나 실패했을 때 작동하는 백업)
     if not audio_success:
