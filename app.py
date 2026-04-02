@@ -215,6 +215,7 @@ def extract_media(url):
     common_args = {'youtube': {'player_client': ['ios', 'tv', 'web']}}
     
     title, description = "제목 없음", "설명 없음"
+    api_quota = None
     # 메타데이터를 다운로드 에러 전에 1차적으로 강제 추출 시도
     try:
         with yt_dlp.YoutubeDL({'quiet': True, 'no_warnings': True}) as ydl:
@@ -250,7 +251,7 @@ def extract_media(url):
             # API 잔여 횟수 실시간 추적 (RapidAPI 전용 헤더 파싱)
             remaining = res.headers.get("x-ratelimit-requests-remaining")
             if remaining:
-                st.session_state["api_remaining"] = remaining
+                api_quota = remaining
                 
             if res.status_code == 200:
                 data = res.json()
@@ -300,7 +301,7 @@ def extract_media(url):
                 err_msg = f"미디어 다운로드 완전 차단됨 (가짜 DRM 차단: {e2})"
             
     if not audio_success:
-        return title, description, None, [], temp_dir, err_msg
+        return title, description, None, [], temp_dir, api_quota, err_msg
         
     # 2. 비디오 프레임 추출을 위한 저화질 영상 다운로드
     opts_video = {
@@ -334,7 +335,7 @@ def extract_media(url):
                         frames.append(img)
             cap.release()
 
-    return title, description, audio_path, frames, temp_dir, None
+    return title, description, audio_path, frames, temp_dir, api_quota, None
 
 # --- 실행 버튼 (모바일 환경을 고려해 폭 100% 사용) ---
 if st.button("🚀 검열 시작", type="primary", use_container_width=True):
@@ -361,7 +362,10 @@ if st.button("🚀 검열 시작", type="primary", use_container_width=True):
                         st.write("✅ 자막 텍스트 확보 완료")
                     
                     st.write("2. 영상/오디오 미디어를 안전하게 내려받는 중... (403 우회 모드)")
-                    title, desc, audio_path, frames, temp_dir, err = extract_media(youtube_url)
+                    title, desc, audio_path, frames, temp_dir, api_quota, err = extract_media(youtube_url)
+                    
+                    if api_quota:
+                        st.session_state["api_remaining"] = api_quota
                     
                     if err:
                         st.warning(f"⚠️ 영상 다운로드 서버 차단(403) 발생. 미디어 스캔이 제한되며 '자막 대본' 분석으로 대체합니다. ({err})")
