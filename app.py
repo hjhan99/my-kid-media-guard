@@ -447,7 +447,7 @@ if st.button("🚀 검열 시작", type="primary", use_container_width=True):
                     if blind_mode:
                         smart_model = 'gemini-1.5-flash'
                     elif not transcript_text and audio_path:
-                        smart_model = 'gemini-1.5-pro'
+                        smart_model = 'gemini-1.5-pro-latest'
                         st.info("🧠 자막 데이터가 존재하지 않아, 최고성능 청취 엔진(Gemini 1.5 Pro)으로 자동 터보 변속합니다!")
                     
                     st.write(f"⏳ 채택된 모델({smart_model}) 추론 시작...")
