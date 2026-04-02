@@ -444,9 +444,9 @@ if st.button("🚀 검열 시작", type="primary", use_container_width=True):
                     # 🧠 [단일 초고속 안전 모델 모드]
                     # 사용자님의 API 키 권한(우수 등급)이 Pro 모델 접근이 차단된 상태이므로, 가장 안정적인 Flash 모델로 통일하되
                     # 오디오 청취력을 강제할 수 있도록 프롬프트(명령어) 옵션을 하단에서 강화합니다.
-                    smart_model = 'gemini-1.5-flash'
+                    smart_model = 'gemini-3-flash-preview'
                     if not transcript_text and audio_path:
-                        st.info("🧠 자막 데이터가 존재하지 않지만, Gemini 1.5 Flash 엔진의 '오디오 집중 청취 모드'로 스캔합니다!")
+                        st.info("🧠 자막 데이터가 존재하지 않지만, Gemini 3 엔진의 '오디오 집중 청취 모드'로 스캔합니다!")
                     
                     st.write(f"⏳ 채택된 모델({smart_model}) 추론 시작...")
                     
