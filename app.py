@@ -138,14 +138,15 @@ st.title("🛡️ MyKidMediaGuard")
 st.subheader("기독교 가치관 기반 유튜브 맞춤형 통합 검열기")
 
 # --- 전역 세션 상태 관리 (최상단) ---
-if "api_remaining" not in st.session_state:
-    st.session_state["api_remaining"] = "?" # 첫 구동 시 기본값
+if "session_scans" not in st.session_state:
+    st.session_state["session_scans"] = 0 # 앱 접속 후 누적 검사 횟수
 
 # --- 사이드바 설정 ---
 with st.sidebar:
     st.header("⚙️ 설정 (Settings)")
-    # API 잔여 횟수 배지
-    st.metric("API 잔여 호출", st.session_state["api_remaining"])
+    # 오늘 앱 실사용 횟수 배지
+    st.metric("앱 누적 스캔 횟수", f"{st.session_state['session_scans']} 회", delta="월 500회 무료", delta_color="normal")
+    st.caption("※ 이 서버 API는 외부로 잔여 횟수를 보내주지 않아, 현재 재부팅된 앱에서의 누적 검사량만 세어줍니다.")
     
     # 1. Streamlit Cloud의 시크릿 저장소(st.secrets) 최우선 확인
     api_key = None
@@ -382,8 +383,8 @@ if st.button("🚀 검열 시작", type="primary", use_container_width=True):
                     st.write("2. 영상/오디오 미디어를 안전하게 내려받는 중... (403 우회 모드)")
                     title, desc, audio_path, frames, temp_dir, api_quota, used_engine, err = extract_media(youtube_url)
                     
-                    if api_quota:
-                        st.session_state["api_remaining"] = api_quota
+                    if used_engine != "알 수 없음" and not err:
+                        st.session_state["session_scans"] += 1
                     
                     if err:
                         st.warning(f"⚠️ 영상 다운로드 파이프라인 차단 발생. 미디어 스캔이 제한되며 '자막 대본' 분석으로 대체합니다. ({err})")
