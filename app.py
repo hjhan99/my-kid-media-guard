@@ -137,6 +137,10 @@ if not check_password():
 st.title("🛡️ MyKidMediaGuard")
 st.subheader("기독교 가치관 기반 유튜브 맞춤형 통합 검열기")
 
+# --- 전역 세션 상태 관리 (최상단) ---
+if "api_remaining" not in st.session_state:
+    st.session_state["api_remaining"] = "?" # 첫 구동 시 기본값
+
 # --- 사이드바 설정 ---
 with st.sidebar:
     st.header("⚙️ 설정 (Settings)")
