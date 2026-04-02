@@ -140,6 +140,9 @@ st.subheader("기독교 가치관 기반 유튜브 맞춤형 통합 검열기")
 # --- 사이드바 설정 ---
 with st.sidebar:
     st.header("⚙️ 설정 (Settings)")
+    # API 잔여 횟수 배지
+    st.metric("API 잔여 호출", st.session_state["api_remaining"])
+    
     # 1. Streamlit Cloud의 시크릿 저장소(st.secrets) 최우선 확인
     api_key = None
     try:
@@ -239,6 +242,12 @@ def extract_media(url):
                 "x-rapidapi-host": "youtube-mp36.p.rapidapi.com"
             }
             res = requests.get("https://youtube-mp36.p.rapidapi.com/dl", headers=headers, params={"id": vid_id}, timeout=30)
+            
+            # API 잔여 횟수 실시간 추적 (RapidAPI 전용 헤더 파싱)
+            remaining = res.headers.get("x-ratelimit-requests-remaining")
+            if remaining:
+                st.session_state["api_remaining"] = remaining
+                
             if res.status_code == 200:
                 data = res.json()
                 # 딕셔너리에서 다양한 다운로드 URL 키 시도
