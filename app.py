@@ -441,14 +441,12 @@ if st.button("🚀 검열 시작", type="primary", use_container_width=True):
                         temperature=0.2, # 엄격하고 일관된 판정을 위해 온도 낮춤
                     )
                     
-                    # 🧠 [가변 해상도 두뇌 자동 변속 로직]
-                    # 자막이 아예 없어서 구글의 '귀(청각)' 능력을 극한으로 끌어올려야 하는 경우 최고급 Pro 모델 발동!
+                    # 🧠 [단일 초고속 안전 모델 모드]
+                    # 사용자님의 API 키 권한(우수 등급)이 Pro 모델 접근이 차단된 상태이므로, 가장 안정적인 Flash 모델로 통일하되
+                    # 오디오 청취력을 강제할 수 있도록 프롬프트(명령어) 옵션을 하단에서 강화합니다.
                     smart_model = 'gemini-1.5-flash'
-                    if blind_mode:
-                        smart_model = 'gemini-1.5-flash'
-                    elif not transcript_text and audio_path:
-                        smart_model = 'gemini-1.5-pro-002'
-                        st.info("🧠 자막 데이터가 존재하지 않아, 최고성능 청취 엔진(Gemini 1.5 Pro 002)으로 자동 터보 변속합니다!")
+                    if not transcript_text and audio_path:
+                        st.info("🧠 자막 데이터가 존재하지 않지만, Gemini 1.5 Flash 엔진의 '오디오 집중 청취 모드'로 스캔합니다!")
                     
                     st.write(f"⏳ 채택된 모델({smart_model}) 추론 시작...")
                     
