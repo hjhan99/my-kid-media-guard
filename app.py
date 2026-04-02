@@ -455,11 +455,25 @@ if st.button("🚀 검열 시작", type="primary", use_container_width=True):
                     
                     status.update(label="🛡️ 가디언 엔진이 미디어의 가치관을 정밀 스캔 중입니다...", state="running")
                     
-                    response = client.models.generate_content(
-                        model=smart_model,
-                        contents=content_parts,
-                        config=generate_content_config,
-                    )
+                    # 자동 재시도 로직 (구글 서버 503 폭주 방어용: 최대 3회 자동 뚫기)
+                    import time
+                    max_retries = 3
+                    response = None
+                    
+                    for attempt in range(max_retries):
+                        try:
+                            response = client.models.generate_content(
+                                model=smart_model,
+                                contents=content_parts,
+                                config=generate_content_config,
+                            )
+                            break # 대성공 시 접속 루프 탈출
+                        except Exception as ai_err:
+                            if "503" in str(ai_err) and attempt < max_retries - 1:
+                                st.warning(f"⚠️ 구글 AI 서버 폭주(503) 감지! 5초 대기 후 자동으로 재접속을 시도합니다... (자동 뚫기 {attempt+1}/{max_retries})")
+                                time.sleep(5)
+                            else:
+                                raise ai_err # 3번 다 실패하거나 503이 아닌 다른 진짜 에러면 외부 Exception 발생
                     
                     loading_bar.progress(100, text="✅ 모든 정밀 분석이 완료되었습니다!")
                         
