@@ -248,10 +248,11 @@ def extract_media(url):
             }
             res = requests.get("https://youtube-mp36.p.rapidapi.com/dl", headers=headers, params={"id": vid_id}, timeout=30)
             
-            # API 잔여 횟수 실시간 추적 (RapidAPI 전용 헤더 파싱)
-            remaining = res.headers.get("x-ratelimit-requests-remaining")
-            if remaining:
-                api_quota = remaining
+            # API 잔여 횟수 실시간 추적 (모든 형태의 RapidAPI 잔여 헤더 동적 추적)
+            for key, val in res.headers.items():
+                if "ratelimit" in key.lower() and "remaining" in key.lower():
+                    api_quota = val
+                    break
                 
             if res.status_code == 200:
                 data = res.json()
