@@ -247,27 +247,40 @@ def extract_media(url):
                 "x-rapidapi-key": rapidapi_key,
                 "x-rapidapi-host": "youtube-mp36.p.rapidapi.com"
             }
-            res = requests.get("https://youtube-mp36.p.rapidapi.com/dl", headers=headers, params={"id": vid_id}, timeout=30)
-            
-            # API 잔여 횟수 실시간 추적 (모든 형태의 RapidAPI 잔여 헤더 동적 추적)
-            for key, val in res.headers.items():
-                if "ratelimit" in key.lower() and "remaining" in key.lower():
-                    api_quota = val
-                    break
+            # 영상 길이가 길어 서버에서 변환 중일 경우 최대 10회 주기적 폴링 대기
+            import time
+            for _ in range(10):
+                res = requests.get("https://youtube-mp36.p.rapidapi.com/dl", headers=headers, params={"id": vid_id}, timeout=30)
                 
-            if res.status_code == 200:
-                data = res.json()
-                # 딕셔너리에서 다양한 다운로드 URL 키 시도
-                download_url = data.get("link") or data.get("url") or data.get("download") or data.get("mp3")
-                
-                if download_url:
-                    dl_res = requests.get(download_url, timeout=60)
-                    with open(audio_path, 'wb') as f:
-                        f.write(dl_res.content)
-                    audio_success = True
-                    success_engine = "RapidAPI"
+                # API 잔여 횟수 실시간 추적 (모든 형태의 RapidAPI 잔여 헤더 동적 추적)
+                for key, val in res.headers.items():
+                    if "ratelimit" in key.lower() and "remaining" in key.lower():
+                        api_quota = val
+                        break
+                    
+                if res.status_code == 200:
+                    data = res.json()
+                    # 딕셔너리에서 다양한 다운로드 URL 키 시도
+                    download_url = data.get("link") or data.get("url") or data.get("download") or data.get("mp3")
+                    
+                    if download_url and str(download_url).strip() != "":
+                        dl_res = requests.get(download_url, timeout=60)
+                        with open(audio_path, 'wb') as f:
+                            f.write(dl_res.content)
+                        audio_success = True
+                        success_engine = "RapidAPI"
+                        err_msg = None
+                        break  # 성공 시 루프 탈출
+                    elif data.get("status") == "processing" or data.get("msg") == "in process":
+                        err_msg = f"RapidAPI 변환 대기 초과 (15분 이상 긴 영상 변환 지연 중): {data}"
+                        time.sleep(3)
+                        continue # 서버 다운로드 중이므로 3초 뒤 재시도
+                    else:
+                        err_msg = f"RapidAPI 응답을 해석할 수 없습니다: {data}"
+                        break
                 else:
-                    err_msg = f"RapidAPI 응답을 해석할 수 없습니다: {data}"
+                    err_msg = f"RapidAPI 접속 거부 (상태코드 {res.status_code}): {res.text}"
+                    break
             else:
                 err_msg = f"RapidAPI 접속 거부 (상태코드 {res.status_code}): {res.text}"
         except Exception as api_err:
